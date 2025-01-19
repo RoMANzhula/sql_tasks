@@ -1,0 +1,113 @@
+Solution:
+
+WITH SplitWords AS (
+    SELECT
+        content_id,
+        content_text,
+        TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(content_text, ' ', numbers.n), ' ', -1)) AS word,
+        numbers.n AS position
+    FROM
+        user_content
+    JOIN (
+        SELECT 1 AS n UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6
+        UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10
+    ) numbers
+    ON CHAR_LENGTH(content_text) - CHAR_LENGTH(REPLACE(content_text, ' ', '')) >= numbers.n - 1
+),
+FormattedWords AS (
+    SELECT
+        content_id,
+        position,
+        CASE
+            WHEN word LIKE '%-%' THEN
+                CONCAT(
+                    UPPER(LEFT(SUBSTRING_INDEX(word, '-', 1), 1)),
+                    LOWER(SUBSTRING(SUBSTRING_INDEX(word, '-', 1), 2)),
+                    '-',
+                    UPPER(LEFT(SUBSTRING_INDEX(word, '-', -1), 1)),
+                    LOWER(SUBSTRING(SUBSTRING_INDEX(word, '-', -1), 2))
+                )
+            ELSE CONCAT(
+                    UPPER(LEFT(word, 1)),
+                    LOWER(SUBSTRING(word, 2))
+                )
+        END AS formatted_word
+    FROM
+        SplitWords
+),
+ReconstructedText AS (
+    SELECT
+        content_id,
+        GROUP_CONCAT(formatted_word ORDER BY position SEPARATOR ' ') AS converted_text
+    FROM
+        FormattedWords
+    GROUP BY
+        content_id
+)
+SELECT
+    u.content_id,
+    u.content_text AS original_text,
+    r.converted_text
+FROM
+    user_content u
+JOIN
+    ReconstructedText r
+ON
+    u.content_id = r.content_id
+;
+
+
+Task: 3374. First Letter Capitalization II
+
+Condition:
+Table: user_content
++-------------+---------+
+| Column Name | Type    |
++-------------+---------+
+| content_id  | int     |
+| content_text| varchar |
++-------------+---------+
+content_id is the unique key for this table.
+Each row contains a unique ID and the corresponding text content.
+Write a solution to transform the text in the content_text column by applying the following rules:
+
+Convert the first letter of each word to uppercase and the remaining letters to lowercase
+Special handling for words containing special characters:
+For words connected with a hyphen -, both parts should be capitalized (e.g., top-rated → Top-Rated)
+All other formatting and spacing should remain unchanged
+Return the result table that includes both the original content_text and the modified text following the above rules.
+The result format is in the following example.
+
+
+Example:
+Input:
+user_content table:
++------------+---------------------------------+
+| content_id | content_text                    |
++------------+---------------------------------+
+| 1          | hello world of SQL              |
+| 2          | the QUICK-brown fox             |
+| 3          | modern-day DATA science         |
+| 4          | web-based FRONT-end development |
++------------+---------------------------------+
+Output:
++------------+---------------------------------+---------------------------------+
+| content_id | original_text                   | converted_text                  |
++------------+---------------------------------+---------------------------------+
+| 1          | hello world of SQL              | Hello World Of Sql              |
+| 2          | the QUICK-brown fox             | The Quick-Brown Fox             |
+| 3          | modern-day DATA science         | Modern-Day Data Science         |
+| 4          | web-based FRONT-end development | Web-Based Front-End Development |
++------------+---------------------------------+---------------------------------+
+Explanation:
+For content_id = 1:
+Each word's first letter is capitalized: "Hello World Of Sql"
+For content_id = 2:
+Contains the hyphenated word "QUICK-brown" which becomes "Quick-Brown"
+Other words follow normal capitalization rules
+For content_id = 3:
+Hyphenated word "modern-day" becomes "Modern-Day"
+"DATA" is converted to "Data"
+For content_id = 4:
+Contains two hyphenated words: "web-based" → "Web-Based"
+And "FRONT-end" → "Front-End"
